@@ -1,9 +1,9 @@
 # Dynasty_Scans_Downloader
 
 Python script to download manga from https://dynasty-scans.com/ 
-Takes manga link as input ( of random chapter )
+Takes manga link as input 
 
-Example: https://dynasty-scans.com/chapters/liar_satsuki_can_see_death_ch03
+Example: https://dynasty-scans.com/series/liar_satsuki_can_see_death
 
 You can download specified scope of chapters
 
