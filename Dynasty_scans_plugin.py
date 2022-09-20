@@ -1,16 +1,24 @@
 import os
 import shutil
 import threading
+import time
+from itertools import repeat
 from pathlib import Path
 from tkinter import filedialog
-
+import multiprocessing as mp
+from itertools import repeat
 import requests
 from bs4 import BeautifulSoup
 
-downloaded_files_list = []
-global chapter_name
+download_ready_links = []
+
+chapter_name = ''
+final_directory = ''
+
 document_path = os.path.expanduser('~\Documents')
 image_count = 0
+
+
 
 def get_manga_title(Url):
     getURL = requests.get("".join(Url), )  # or Mozilla/5.0 , Chrome/104.0.5112.80
@@ -20,15 +28,16 @@ def get_manga_title(Url):
     return title.text
 
 
-def download_file_from_link(link, save_dir=str(Path.home() / "Downloads")):
+def download_file_from_link(link,dir,chapter_name):
     filename = link.split("/")[-1]
     # downloaded_files_list.append(filename)
     r = requests.get(link, stream=True)
     r.raw.decode_content = True
-    global chapter_name
-    with open(save_dir + '/' + "".join(chapter_name) + '/' + filename, 'wb') as f:
+
+    print(dir + '/' + "".join(chapter_name) + '/' + filename)
+    with open(dir + '/' + "".join(chapter_name) + '/' + filename, 'wb') as f:
         shutil.copyfileobj(r.raw, f)
-    return
+    return 'success'
 
 
 def get_chapter_image_links(url):
@@ -56,41 +65,34 @@ def get_chapter_image_links(url):
     print(image_links)
     return image_links
 
-
-def dynasty_download(links, save_directory):
-    threads = []
-    for x in range(len(links)):
-        t = threading.Thread(target=download_file_from_link(links[x], save_directory))
-        t.daemon = True
-        threads.append(t)
-
-    for x in range(len(links)):
-        threads[x].start()
-
-    for x in range(len(links)):
-        threads[x].join()
+def multiprocess_download(dir,chapter_name):
+    with mp.Pool() as pool:
+        for result in pool.starmap(download_file_from_link, zip(download_ready_links, repeat(dir), repeat(chapter_name)),):
+            print(f'Got result: {result}', flush=True)
 
 
 def multiple_download():
     global url
     print("Link to desired manga: ", )
-    url = str(input())
+    # url = str(input())
 
+    url = 'https://dynasty-scans.com/series/liar_satsuki_can_see_death'
     # ask for chapter range
     print("Specify from which to which chapter you want to download: ", )
     print("FROM: ")
-    zakres1 = int(input())
+    zakres1 = 1  # int(input())
 
     print("TO: ")
-    zakres2 = int(input())
+    zakres2 = 13  # int(input())
 
     zakres2 = zakres2 + 1
 
     # ask for save directory
     print("Chose Save Directory ? : ", )
-    chosen_directory = filedialog.askdirectory()
+    chosen_directory = document_path  # filedialog.askdirectory()
 
     # create folder with manga title
+    global final_directory
     final_directory = os.path.join(chosen_directory, get_manga_title(url))
     print(final_directory)
     if not os.path.exists(final_directory):
@@ -103,7 +105,7 @@ def multiple_download():
     global chapter_name
     chapter_name = list('chapter @')
 
-    download_ready_links = []
+    global download_ready_links
     # name chapters
 
     for x in range(zakres1, zakres2):
@@ -117,19 +119,16 @@ def multiple_download():
         if x < 10:
             url = url + '0' + str(x)
             download_ready_links = get_chapter_image_links("".join(url))
-            dynasty_download(download_ready_links, final_directory)
+            multiprocess_download(final_directory,chapter_name)
             url = url[:len(url) - 2]
         if x == 10:
             url = url + str(x)
             download_ready_links = get_chapter_image_links("".join(url))
-            dynasty_download(download_ready_links, final_directory)
+            multiprocess_download(final_directory,chapter_name)
             url = url[:len(url) - 2]
         if x > 10:
             url = url + str(x)
             download_ready_links = get_chapter_image_links("".join(url))
-            dynasty_download(download_ready_links, final_directory)
+            multiprocess_download(final_directory,chapter_name)
             url = url[:len(url) - 2]
-    print(download_ready_links)
-
-
     print('Download Finished')
